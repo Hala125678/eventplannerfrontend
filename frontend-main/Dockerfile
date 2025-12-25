@@ -1,33 +1,27 @@
-# Stage 1: Build Angular app
 FROM node:20-alpine AS build
 
-# Set working directory
 WORKDIR /app
-
-# Copy package files and install dependencies
 COPY package*.json ./
 RUN npm install
-
-# Install Angular CLI globally
 RUN npm install -g @angular/cli
 
-# Copy all source files
 COPY . .
+RUN npm run build
 
-# Build Angular app in production mode
-RUN npm run build -- --output-path=dist
-
-# Stage 2: Serve with Nginx
 FROM nginx:alpine
+COPY --from=build /app/dist/event-planner-frontend/browser /usr/share/nginx/html
+EXPOSE 80
+FROM node:20-alpine AS build
 
-# Copy built Angular files to Nginx html folder
-COPY --from=build /app/dist /usr/share/nginx/html
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+RUN npm install -g @angular/cli
 
-# Copy nginx.conf if it exists; use default if not
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY . .
+RUN npm run build
 
-# Expose port 80
+FROM nginx:alpine
+COPY --from=build /app/dist/event-planner-frontend/browser /usr/share/nginx/html
 EXPOSE 80
 
-# Start Nginx
-CMD ["nginx", "-g", "daemon off;"]
